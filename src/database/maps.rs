@@ -512,6 +512,18 @@ pub(super) static MAPS: &[Descriptor] = &[
 	},
 	Descriptor {
 		name: "websessionid_session",
+		..descriptor::RANDOM
+	},
+	Descriptor {
+		name: "login_attempts",
+		..descriptor::RANDOM
+	},
+	Descriptor {
+		name: "ip_blocks",
+		..descriptor::RANDOM_SMALL
+	},
+	Descriptor {
+		name: "user_login_locks",
 		..descriptor::RANDOM_SMALL
 	},
 ];

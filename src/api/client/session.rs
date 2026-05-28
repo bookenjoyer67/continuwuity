@@ -61,6 +61,7 @@ pub async fn handle_login(
 	identifier: Option<&UserIdentifier>,
 	password: &str,
 	user: Option<&String>,
+	ip: &str,
 ) -> Result<OwnedUserId> {
 	debug!("Got password login type");
 
@@ -95,7 +96,20 @@ pub async fn handle_login(
 		return Err!(Request(Forbidden("This account is not permitted to log in.")));
 	}
 
-	services.users.check_password(&user_id, password).await
+	// Check login security (rate limiting, IP blocks, automatic locks)
+	if let Err(e) = services.login_security.check_login_allowed(&user_id, ip).await {
+		// Record failed attempt due to security check failure
+		let _ = services.login_security.record_attempt(&user_id, ip, false, None).await;
+		return Err(e);
+	}
+
+	let auth_result = services.users.check_password(&user_id, password).await;
+
+	// Record login attempt
+	let successful = auth_result.is_ok();
+	let _ = services.login_security.record_attempt(&user_id, ip, successful, None).await;
+
+	auth_result
 }
 
 /// # `POST /_matrix/client/v3/login`
@@ -139,13 +153,22 @@ pub(crate) async fn login_route(
 	let user_id = match &body.login_info {
 		#[allow(deprecated)]
 		| LoginInfo::Password(login::v3::Password { identifier, password, user, .. }) =>
-			handle_login(&services, identifier.as_ref(), password, user.as_ref()).await?,
+			handle_login(&services, identifier.as_ref(), password, user.as_ref(), &client.to_string()).await?,
 		| LoginInfo::Token(login::v3::Token { token, .. }) => {
 			debug!("Got token login type");
 			if !services.server.config.login_via_existing_session {
 				return Err!(Request(Unknown("Token login is not enabled.")));
 			}
-			services.users.find_from_login_token(token).await?
+			let user_id = services.users.find_from_login_token(token).await?;
+			// Check IP blocks (rate limiting not applied to token login)
+			if let Err(e) = services.login_security.check_login_allowed(&user_id, &client.to_string()).await {
+				// Record failed attempt due to security check failure
+				let _ = services.login_security.record_attempt(&user_id, &client.to_string(), false, None).await;
+				return Err(e);
+			}
+			// Record successful token login attempt
+			let _ = services.login_security.record_attempt(&user_id, &client.to_string(), true, None).await;
+			user_id
 		},
 		#[allow(deprecated)]
 		| LoginInfo::ApplicationService(login::v3::ApplicationService {
@@ -178,6 +201,16 @@ pub(crate) async fn login_route(
 			if !info.is_user_match(&user_id) && !emergency_mode_enabled {
 				return Err!(Request(Exclusive("Username is not in an appservice namespace.")));
 			}
+
+			// Check login security for appservice login (IP blocks only, rate limiting may not apply)
+			if let Err(e) = services.login_security.check_login_allowed(&user_id, &client.to_string()).await {
+				// Record failed attempt due to security check failure
+				let _ = services.login_security.record_attempt(&user_id, &client.to_string(), false, None).await;
+				return Err(e);
+			}
+
+			// Record successful appservice login attempt
+			let _ = services.login_security.record_attempt(&user_id, &client.to_string(), true, None).await;
 
 			user_id
 		},

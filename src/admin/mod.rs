@@ -15,6 +15,7 @@ pub(crate) mod appservice;
 pub(crate) mod check;
 pub(crate) mod debug;
 pub(crate) mod federation;
+pub(crate) mod login_security;
 pub(crate) mod media;
 pub(crate) mod oidc;
 pub(crate) mod query;

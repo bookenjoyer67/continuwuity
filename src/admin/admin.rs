@@ -7,6 +7,7 @@ use crate::{
 	context::Context,
 	debug::{self, DebugCommand},
 	federation::{self, FederationCommand},
+	login_security::{self, LoginSecurityCommand},
 	media::{self, MediaCommand},
 	oidc::{self, OidcCommand},
 	query::{self, QueryCommand},
@@ -51,6 +52,11 @@ pub enum AdminCommand {
 	#[command(subcommand)]
 	Media(MediaCommand),
 
+	#[command(subcommand)]
+	/// Commands for managing login security (rate limiting, IP blocks)
+	LoginSecurity(LoginSecurityCommand),
+
+	#[command(subcommand)]
 	/// Commands for checking integrity
 	#[command(subcommand)]
 	Check(CheckCommand),
@@ -105,5 +111,10 @@ pub(super) async fn process(command: AdminCommand, context: &Context<'_>) -> Res
 			query::process(command, context).await
 		},
 		| Check(command) => check::process(command, context).await,
+		| LoginSecurity(command) => {
+			// login security commands are all restricted
+			context.bail_restricted()?;
+			login_security::process(command, context).await
+		},
 	}
 }

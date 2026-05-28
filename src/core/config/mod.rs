@@ -2407,6 +2407,11 @@ pub struct Config {
 	#[serde(default)]
 	pub matrix_rtc: MatrixRtcConfig,
 
+	/// Configuration for login security (rate limiting, account locking)
+	/// display: nested
+	#[serde(default)]
+	pub login_security: LoginSecurityConfig,
+
 	#[serde(flatten)]
 	#[allow(clippy::zero_sized_map_values)]
 	// this is a catchall, the map shouldn't be zero at runtime
@@ -2907,6 +2912,63 @@ impl Config {
 	pub fn check(&self) -> Result<(), Error> { check(self) }
 }
 
+/// Configuration for login security (rate limiting, account locking)
+#[derive(Clone, Debug, Deserialize)]
+#[config_example_generator(
+	filename = "conduwuit-example.toml",
+	section = "global.login_security"
+)]
+pub struct LoginSecurityConfig {
+	/// Maximum number of failed login attempts per user before automatic lock.
+	/// default: 5
+	#[serde(default = "max_failed_attempts_per_user")]
+	pub max_failed_attempts_per_user: u32,
+	/// Maximum number of failed login attempts per IP address before automatic block.
+	/// default: 10
+	#[serde(default = "max_failed_attempts_per_ip")]
+	pub max_failed_attempts_per_ip: u32,
+	/// Duration in seconds for which an account or IP is locked after exceeding failed attempts.
+	/// default: 300 (5 minutes)
+	#[serde(default = "default_lock_duration")]
+	pub lock_duration_seconds: u64,
+	/// Time window in seconds during which failed attempts are counted for rate limiting.
+	/// default: 900 (15 minutes)
+	#[serde(default = "default_attempt_window")]
+	pub attempt_window_seconds: u64,
+	/// Enable IP-based rate limiting (blocking).
+	/// default: true
+	#[serde(default = "true_fn")]
+	pub enable_ip_rate_limiting: bool,
+	/// Enable user-based rate limiting (locking).
+	/// default: true
+	#[serde(default = "true_fn")]
+	pub enable_user_rate_limiting: bool,
+	/// Log all login attempts (successful and failed) to the database.
+	/// default: true
+	#[serde(default = "true_fn")]
+	pub log_all_attempts: bool,
+	/// Graduated lock/block durations in seconds for repeated offenses.
+	/// The duration is selected based on block/lock count (1-indexed).
+	/// default: [300, 900, 3600] (5min, 15min, 60min)
+	#[serde(default = "default_graduated_lock_durations")]
+	pub graduated_lock_durations: Vec<u64>,
+}
+
+impl Default for LoginSecurityConfig {
+    fn default() -> Self {
+        Self {
+            max_failed_attempts_per_user: max_failed_attempts_per_user(),
+            max_failed_attempts_per_ip: max_failed_attempts_per_ip(),
+            lock_duration_seconds: default_lock_duration(),
+            attempt_window_seconds: default_attempt_window(),
+            enable_ip_rate_limiting: true_fn(),
+            enable_user_rate_limiting: true_fn(),
+            log_all_attempts: true_fn(),
+            graduated_lock_durations: default_graduated_lock_durations(),
+        }
+    }
+}
+
 fn true_fn() -> bool { true }
 
 fn default_address() -> ListeningAddr {
@@ -3206,6 +3268,16 @@ fn default_client_receive_timeout() -> u64 { 75 }
 fn default_client_request_timeout() -> u64 { 180 }
 
 fn default_client_response_timeout() -> u64 { 120 }
+
+fn max_failed_attempts_per_user() -> u32 { 5 }
+
+fn max_failed_attempts_per_ip() -> u32 { 10 }
+
+fn default_lock_duration() -> u64 { 300 }
+
+fn default_attempt_window() -> u64 { 900 }
+
+fn default_graduated_lock_durations() -> Vec<u64> { vec![300, 900, 3600] }
 
 fn default_client_shutdown_timeout() -> u64 { 15 }
 
