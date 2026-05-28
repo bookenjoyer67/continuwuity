@@ -193,7 +193,18 @@ pub fn build(router: Router<State>, state: State) -> Router<State> {
 		.merge(client::oauth::router(state))
 		.route("/_continuwuity/server_version", get(client::continuwuity_server_version))
 		.ruma_route(&admin::rooms::ban::ban_room)
-		.ruma_route(&admin::rooms::list::list_rooms);
+		.ruma_route(&admin::rooms::list::list_rooms)
+		.ruma_route(&admin::rooms::join::join_room)
+		.ruma_route(&admin::rooms::members::list_members)
+		.ruma_route(&admin::rooms::state::get_state)
+		.ruma_route(&admin::rooms::purge::purge_room)
+		.ruma_route(&admin::rooms::stats::list_rooms_stats)
+		.ruma_route(&admin::users::create::create_user)
+		.ruma_route(&admin::users::list::list_users)
+		.ruma_route(&admin::users::deactivate::deactivate_user)
+		.ruma_route(&admin::tokens::issue::issue_token)
+		.ruma_route(&admin::tokens::revoke::revoke_token)
+		.route("/_continuwuity/admin/v1/register", post(admin::users::register::register_with_shared_secret));
 
 	if config.allow_federation {
 		router = router

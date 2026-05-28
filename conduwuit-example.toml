@@ -665,6 +665,14 @@
 #
 #registration_token_file =
 
+# Shared secret for Synapse-compatible admin registration API
+# (`POST /_continuwuity/admin/v1/register`). When set, external
+# services can create user accounts by providing an HMAC-SHA1
+# signature of the registration parameters (nonce, username,
+# password, admin flag). If not set, the endpoint returns 501.
+#
+#registration_shared_secret =
+
 # The public site key for reCaptcha. If this is provided, reCaptcha
 # becomes required during registration. If both captcha *and*
 # registration token are enabled, both will be required during

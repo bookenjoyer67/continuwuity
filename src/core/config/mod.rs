@@ -829,6 +829,15 @@ pub struct Config {
 	/// cannot be read, Continuwuity will fail to start.
 	pub registration_token_file: Option<PathBuf>,
 
+	/// Shared secret for Synapse-compatible admin registration API
+	/// (`POST /_continuwuity/admin/v1/register`). When set, external
+	/// services can create user accounts by providing an HMAC-SHA1
+	/// signature of the registration parameters (nonce, username,
+	/// password, admin flag). If not set, the endpoint returns 501.
+	///
+	/// display: sensitive
+	pub registration_shared_secret: Option<String>,
+
 	/// The public site key for reCaptcha. If this is provided, reCaptcha
 	/// becomes required during registration. If both captcha *and*
 	/// registration token are enabled, both will be required during

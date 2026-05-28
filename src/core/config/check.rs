@@ -154,6 +154,13 @@ pub fn check(config: &Config) -> Result {
 		));
 	}
 
+	if config.registration_shared_secret == Some(String::new()) {
+		return Err!(Config(
+			"registration_shared_secret",
+			"Registration shared secret was specified but is empty (\"\")"
+		));
+	}
+
 	if config.max_request_size < 10_000_000 {
 		return Err!(Config(
 			"max_request_size",
