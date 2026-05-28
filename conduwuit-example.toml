@@ -2327,3 +2327,38 @@
 #   through their Matrix client.
 #
 #profile_key_import_mode = "on_registration"
+[global.login_security]
+
+# Maximum number of failed login attempts per user before automatic lock.
+#
+#max_failed_attempts_per_user = 5
+
+# Maximum number of failed login attempts per IP address before automatic block.
+#
+#max_failed_attempts_per_ip = 10
+
+# Duration in seconds for which an account or IP is locked after exceeding failed attempts.
+#
+#lock_duration_seconds = 300 (5 minutes)
+
+# Time window in seconds during which failed attempts are counted for rate limiting.
+#
+#attempt_window_seconds = 900 (15 minutes)
+
+# Enable IP-based rate limiting (blocking).
+#
+#enable_ip_rate_limiting = true
+
+# Enable user-based rate limiting (locking).
+#
+#enable_user_rate_limiting = true
+
+# Log all login attempts (successful and failed) to the database.
+#
+#log_all_attempts = true
+
+# Graduated lock/block durations in seconds for repeated offenses.
+# The duration is selected based on block/lock count (1-indexed).
+#
+#graduated_lock_durations = [300, 900, 3600] (5min, 15min, 60min)
+

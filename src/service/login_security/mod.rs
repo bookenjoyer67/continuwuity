@@ -64,7 +64,7 @@ struct Data {
 #[async_trait]
 impl crate::Service for Service {
     fn build(args: crate::Args<'_>) -> Result<Arc<Self>> {
-        let unknown_user_id = OwnedUserId::parse(format!("@unknown:{}", args.server.config.server_name))
+        let unknown_user_id = UserId::parse(format!("@unknown:{}", args.server.config.server_name))
             .expect("valid unknown user id");
         
         Ok(Arc::new(Self {
