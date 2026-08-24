@@ -902,12 +902,8 @@ dependencies = [
  "ctor",
  "dtor",
  "futures",
-<<<<<<< HEAD
- "hmac 0.13.0",
-=======
  "hex",
- "hmac",
->>>>>>> 75000548e ( Please enter the commit message for your changes. Lines starting)
+ "hmac 0.13.0",
  "http",
  "http-body-util",
  "hyper",
