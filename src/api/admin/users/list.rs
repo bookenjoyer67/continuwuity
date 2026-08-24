@@ -1,6 +1,5 @@
 use axum::extract::State;
 use conduwuit::{Err, Result, info};
-use conduwuit::utils::ReadyExt;
 use futures::StreamExt;
 use ruminuwuity::admin::continuwuity::users;
 
@@ -24,7 +23,7 @@ pub(crate) async fn list_users(
 	let mut total: u64 = 0;
 	let mut users_out: Vec<users::list::v1::UserInfo> = Vec::new();
 
-	let stream = services.users.list_local_users();
+	let stream = services.users.stream_local_users();
 	let mut stream = Box::pin(stream);
 	while let Some(user_id) = stream.next().await {
 		let id_str = user_id.to_string();
@@ -39,7 +38,8 @@ pub(crate) async fn list_users(
 
 		if users_out.len() < limit {
 			let displayname = services.users.displayname(&user_id).await.ok();
-			let deactivated = services.users.is_deactivated(&user_id).await.unwrap_or(false);
+			let status = services.users.status(&user_id).await;
+			let deactivated = matches!(status, service::users::AccountStatus::Deactivated);
 			let admin = services.users.is_admin(&user_id).await;
 
 			users_out.push(users::list::v1::UserInfo {

@@ -6,6 +6,9 @@ use hmac::{Hmac, KeyInit, Mac};
 use ruma::{OwnedDeviceId, OwnedUserId, events::push_rules::PushRulesEvent, push};
 use serde::Deserialize;
 use service::users::HashedPassword;
+use service::users::ProfileFieldChange;
+use ruma::api::client::profile::PropagateTo;
+use ruma::profile::ProfileFieldValue;
 use sha1::Sha1;
 
 type HmacSha1 = Hmac<Sha1>;
@@ -76,22 +79,30 @@ pub(crate) async fn register_with_shared_secret(
 		Err(_) => return Err!(Request(InvalidParam("Invalid username"))),
 	};
 
-	if services.users.exists(&user_id).await {
+	if services.users.status(&user_id).await.is_active() {
 		return Err!(Conflict("User already exists"));
 	}
 
 	// Create user (bypass UIA — same as admin commands)
 	services
 		.users
-		.create(&user_id, Some(HashedPassword::new(&body.password)?))
+		.create_local_account(&user_id, Some(HashedPassword::new(&body.password)?), None, None, None)
 		.await?;
 
 	// Set display name
 	let mut displayname = user_id.localpart().to_owned();
-	if !services.globals.new_user_displayname_suffix().is_empty() {
-		write!(displayname, " {}", services.server.config.new_user_displayname_suffix)?;
+	let suffix = &services.server.config.new_user_displayname_suffix;
+	if !suffix.is_empty() {
+		write!(displayname, " {suffix}")?;
 	}
-	services.users.set_displayname(&user_id, Some(displayname));
+	let _ = services
+		.users
+		.set_profile_field(
+			&user_id,
+			ProfileFieldChange::Set(ProfileFieldValue::DisplayName(displayname)),
+			PropagateTo::None,
+		)
+		.await;
 
 	// Initial push rules
 	services
@@ -108,7 +119,7 @@ pub(crate) async fn register_with_shared_secret(
 		.await?;
 
 	// First user becomes admin automatically, plus explicit grant if requested
-	services.firstrun.empower_first_user(&user_id).await?;
+	services.firstrun.empower_first_user(&user_id).await;
 	if body.admin {
 		services.admin.make_user_admin(&user_id).await?;
 	}
@@ -129,8 +140,8 @@ pub(crate) async fn register_with_shared_secret(
 		.users
 		.create_device(
 			&user_id,
-			&device_id,
-			&access_token,
+			Some(device_id),
+			Some(service::users::DeviceToken::new(access_token.clone())),
 			Some("shared-secret registration".to_owned()),
 			None,
 		)
